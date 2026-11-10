@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { DRAW_VOCABULARY, findCommands, HAND_VOCABULARY } from "./commands";
+import { DRAW_VOCABULARY, findCommands, HAND_VOCABULARY, MIRROR_VOCABULARY } from "./commands";
+
+describe("findCommands in Hologram Mirror", () => {
+  it.each([
+    ["matrix", ["matrix"]],
+    ["show the particles", ["particles"]],
+    ["hologram please", ["hologram"]],
+    ["record a video", ["record"]],
+    ["red", []],
+  ])("%s", (text, expected) => {
+    expect(findCommands(text, MIRROR_VOCABULARY)).toEqual(expected);
+  });
+});
 
 describe("findCommands in Hand Magic", () => {
   it.each([

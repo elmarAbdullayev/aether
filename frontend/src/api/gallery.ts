@@ -9,6 +9,8 @@ export interface GalleryImage {
   url: string;
   /** true when a 3D sculpture from Air Drawing was saved with the picture */
   has_sculpture: boolean;
+  /** a short clip; the picture is its preview */
+  video_url: string | null;
 }
 
 async function check(res: Response): Promise<Response> {
@@ -30,12 +32,19 @@ export async function listImages(): Promise<GalleryImage[]> {
   return (await res.json()) as GalleryImage[];
 }
 
-export async function saveImage(world: WorldId, image: string, sculpture?: SculptureJSON | null): Promise<GalleryImage> {
+export async function saveImage(
+  world: WorldId,
+  image: string,
+  extras: { sculpture?: SculptureJSON | null; video?: string | null } = {},
+): Promise<GalleryImage> {
+  const body: Record<string, unknown> = { world, image };
+  if (extras.sculpture) body.sculpture = extras.sculpture;
+  if (extras.video) body.video = extras.video;
   const res = await check(
     await fetch("/api/gallery", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sculpture ? { world, image, sculpture } : { world, image }),
+      body: JSON.stringify(body),
     }),
   );
   return (await res.json()) as GalleryImage;

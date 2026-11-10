@@ -115,6 +115,19 @@ export const Cube = (p: Props) => (
   </Icon>
 );
 
+export const Record = (p: Props) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <circle cx="12" cy="12" r="3.5" fill="currentColor" />
+  </Icon>
+);
+
+export const Play = (p: Props) => (
+  <Icon {...p}>
+    <path d="M8 5l11 7-11 7z" fill="currentColor" />
+  </Icon>
+);
+
 export const Close = (p: Props) => (
   <Icon {...p}>
     <path d="M6 6l12 12M18 6L6 18" />

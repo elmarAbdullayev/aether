@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteImage, listImages, type GalleryImage } from "../api/gallery";
-import { Close, Cube, Download, Trash } from "../components/icons";
+import { Close, Cube, Download, Play, Trash } from "../components/icons";
 import { SculptureViewer } from "../components/SculptureViewer";
 import { useToast } from "../components/Toast";
 import { TopBar } from "../components/TopBar";
 import { WORLDS } from "../worlds";
 
 const worldName = (id: string) => WORLDS.find((w) => w.id === id)?.name ?? id;
+const extension = (url: string) => url.slice(url.lastIndexOf("."));
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -83,6 +84,11 @@ export default function Gallery() {
                 <button type="button" className="gallery-thumb" onClick={() => setOpen(img)}>
                   <img src={img.url} alt={`Saved from ${worldName(img.world)}`} loading="lazy" />
                   {img.has_sculpture && <span className="thumb-badge">3D</span>}
+                  {img.video_url && (
+                    <span className="thumb-play" aria-label="Video">
+                      <Play />
+                    </span>
+                  )}
                 </button>
                 <div className="gallery-meta">
                   <div>
@@ -107,7 +113,12 @@ export default function Gallery() {
                           <span className="sr-only">Open in 3D</span>
                         </button>
                       )}
-                      <a className="icon-btn" href={img.url} download={`aether-${img.world}-${img.id.slice(0, 6)}`} title="Download">
+                      <a
+                        className="icon-btn"
+                        href={img.video_url ?? img.url}
+                        download={`aether-${img.world}-${img.id.slice(0, 6)}${extension(img.video_url ?? img.url)}`}
+                        title={img.video_url ? "Download video" : "Download"}
+                      >
                         <Download />
                         <span className="sr-only">Download</span>
                       </a>
@@ -126,7 +137,19 @@ export default function Gallery() {
 
       {open && (
         <div className="lightbox" role="dialog" aria-modal="true" aria-label="Picture" onClick={() => setOpen(null)}>
-          <img src={open.url} alt={`Saved from ${worldName(open.world)}`} />
+          {open.video_url ? (
+            <video
+              src={open.video_url}
+              poster={open.url}
+              controls
+              autoPlay
+              loop
+              playsInline
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img src={open.url} alt={`Saved from ${worldName(open.world)}`} />
+          )}
           <button type="button" className="icon-btn lightbox-close" onClick={() => setOpen(null)}>
             <Close />
             <span className="sr-only">Close</span>

@@ -153,7 +153,47 @@ def test_upgrades_old_database(tmp_path):
     api = TestClient(create_app(data_dir=data, site_dir=tmp_path / "nosite"))
     listed = api.get("/api/gallery").json()
     assert listed == [
-        {"id": "old", "world": "hand", "created_at": "2026-11-01T10:00:00+00:00", "url": "/images/old.png", "has_sculpture": False}
+        {"id": "old", "world": "hand", "created_at": "2026-11-01T10:00:00+00:00", "url": "/images/old.png", "has_sculpture": False, "video_url": None}
     ]
     res = api.post("/api/gallery", json={"world": "draw", "image": f"data:image/png;base64,{PNG}", "sculpture": SCULPTURE})
     assert res.status_code == 201
+
+
+WEBM = base64.b64encode(b"\x1a\x45\xdf\xa3" + b"\x00" * 64).decode()
+MP4 = base64.b64encode(b"\x00\x00\x00\x20ftypisom" + b"\x00" * 64).decode()
+
+
+@pytest.mark.parametrize("kind,payload,ext", [("webm", WEBM, ".webm"), ("mp4", MP4, ".mp4")])
+def test_save_video_with_preview(client, kind, payload, ext):
+    api, tmp_path = client
+    res = api.post(
+        "/api/gallery",
+        json={"world": "mirror", "image": f"data:image/png;base64,{PNG}", "video": f"data:video/{kind};base64,{payload}"},
+    )
+    assert res.status_code == 201
+    item = res.json()
+    assert item["video_url"].endswith(ext)
+    assert api.get("/api/gallery").json()[0]["video_url"] == item["video_url"]
+    assert api.get(item["video_url"]).content == base64.b64decode(payload)
+
+    filename = item["video_url"].rsplit("/", 1)[1]
+    assert api.delete(f"/api/gallery/{item['id']}").status_code == 204
+    assert not (tmp_path / "data" / "images" / filename).exists()
+
+
+@pytest.mark.parametrize(
+    "video",
+    [
+        f"data:video/webm;base64,{MP4}",
+        f"data:video/mp4;base64,{WEBM}",
+        f"data:video/avi;base64,{WEBM}",
+        "data:video/webm;base64,%%%",
+        "not a video",
+    ],
+)
+def test_rejects_bad_videos(client, video):
+    api, tmp_path = client
+    res = api.post("/api/gallery", json={"world": "mirror", "image": f"data:image/png;base64,{PNG}", "video": video})
+    assert res.status_code == 422
+    assert api.get("/api/gallery").json() == []
+    assert list((tmp_path / "data" / "images").iterdir()) == []

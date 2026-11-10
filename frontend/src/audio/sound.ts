@@ -12,6 +12,7 @@ export class Sound {
   private hole: { osc: OscillatorNode[]; gain: GainNode; filter: BiquadFilterNode } | null = null;
   private pad: { osc: OscillatorNode[]; gain: GainNode } | null = null;
   private voice: { osc: OscillatorNode[]; gain: GainNode } | null = null;
+  private recordDest: MediaStreamAudioDestinationNode | null = null;
   private muted = false;
   private calm = false;
 
@@ -228,6 +229,74 @@ export class Sound {
     const scale = [523.3, 587.3, 659.3, 784, 880, 1046.5];
     const base = index % 3;
     this.bell([scale[base], scale[base + 2], scale[base + 3]], 0.12, 0.9, 0.05);
+  }
+
+  /** The world's sounds as a stream, for video clips. null before the first click. */
+  captureStream(): MediaStream | null {
+    if (!this.ctx || !this.master) return null;
+    if (!this.recordDest) {
+      this.recordDest = this.ctx.createMediaStreamDestination();
+      this.master.connect(this.recordDest);
+    }
+    return this.recordDest.stream;
+  }
+
+  /** Digital crackle for the hologram style change. */
+  glitch(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    for (let i = 0; i < 5; i++) {
+      const start = now + i * 0.035;
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.value = 180 + Math.random() * 1800;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.06, start);
+      gain.gain.setValueAtTime(0, start + 0.028);
+      osc.connect(gain);
+      this.out(gain, 0.2);
+      osc.start(start);
+      osc.stop(start + 0.04);
+    }
+    const src = this.noiseSource();
+    const filter = ctx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.value = 3000;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    src.connect(filter).connect(gain);
+    this.out(gain, 0.1);
+    src.start(now);
+    src.stop(now + 0.2);
+  }
+
+  /** Long sandy rush when the hologram falls apart into dust. */
+  dissolve(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const src = this.noiseSource();
+    src.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 1.2;
+    filter.frequency.setValueAtTime(4000, now);
+    filter.frequency.exponentialRampToValueAtTime(250, now + 2.4);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.4, now + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.6);
+    src.connect(filter).connect(gain);
+    this.out(gain, 0.6);
+    src.start(now);
+    src.stop(now + 2.7);
+  }
+
+  /** Rising shimmer when the hologram builds itself again. */
+  reform(): void {
+    this.bell([392, 523.3, 659.3, 784, 1046.5, 1318.5], 0.09, 1.4, 0.07);
   }
 
   /** Camera shutter for "save". */

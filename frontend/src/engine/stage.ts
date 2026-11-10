@@ -105,6 +105,12 @@ export class Stage {
     return material;
   }
 
+  /** For a world's own point shader: keep its uScale uniform in step with the screen size. */
+  trackPointMaterial(material: THREE.ShaderMaterial): void {
+    material.uniforms.uScale.value = this.pointScale();
+    this.pointMaterials.push(material);
+  }
+
   get aspect(): number {
     return this.camera.aspect;
   }

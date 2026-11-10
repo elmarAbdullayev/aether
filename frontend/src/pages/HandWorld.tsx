@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { saveImage } from "../api/gallery";
-import { Image, Video } from "../components/icons";
+import { Image, Record, Video } from "../components/icons";
+import { RecIndicator, useClipRecorder } from "../components/Recorder";
 import { useToast } from "../components/Toast";
 import { TopBar } from "../components/TopBar";
 import {
@@ -88,13 +89,25 @@ export default function HandWorld() {
     }
   }, [showToast]);
 
+  const clip = useClipRecorder({
+    world: "hand",
+    canvas: () => sessionRef.current?.world.canvas ?? null,
+    audio: () => sessionRef.current?.sound.captureStream() ?? null,
+    poster: () => sessionRef.current?.capture(true) ?? null,
+    toast: showToast,
+  });
+
   commandRef.current = (command) => {
     const session = sessionRef.current;
     if (!session) return;
     if (command === "save") void save();
+    else if (command === "record") clip.record();
     else if (command === "next") navigate(nextWorld("hand").path);
     else if ((ELEMENT_ORDER as string[]).includes(command)) session.setElement(command as ElementName);
   };
+
+  const recordRef = useRef(clip.record);
+  recordRef.current = clip.record;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -103,6 +116,7 @@ export default function HandWorld() {
       const index = ["1", "2", "3", "4"].indexOf(e.key);
       if (index >= 0) sessionRef.current?.setElement(ELEMENT_ORDER[index]);
       else if (e.key === "s" || e.key === "S") void save();
+      else if (e.key === "r" || e.key === "R") recordRef.current();
       else if (e.key === "c" || e.key === "C") setPreview((p) => !p);
       else if (e.key === "n" || e.key === "N") navigate(nextWorld("hand").path);
       else return;
@@ -157,10 +171,21 @@ export default function HandWorld() {
 
       <TopBar>
         {playing && (
-          <button type="button" className="icon-btn" onClick={() => void save()} title="Save picture to gallery (S)">
-            <Image />
-            <span className="sr-only">Save picture</span>
-          </button>
+          <>
+            <button
+              type="button"
+              className={`icon-btn rec-btn${clip.secondsLeft !== null ? " is-on" : ""}`}
+              onClick={clip.record}
+              title="Record a 5 second video (R)"
+            >
+              <Record />
+              <span className="sr-only">Record video</span>
+            </button>
+            <button type="button" className="icon-btn" onClick={() => void save()} title="Save picture to gallery (S)">
+              <Image />
+              <span className="sr-only">Save picture</span>
+            </button>
+          </>
         )}
         {stage === "camera" && (
           <button
@@ -206,7 +231,7 @@ export default function HandWorld() {
             voice={voice}
             readLevel={readLevel}
             heard={heard}
-            hint={<>Say “fire”, “ice”, “galaxy”, “rainbow”, “save” or “next world”</>}
+            hint={<>Say “fire”, “ice”, “galaxy”, “rainbow”, “save”, “record” or “next world”</>}
           />
           <GestureGuide items={guide} />
 
@@ -239,6 +264,7 @@ export default function HandWorld() {
           onStart={(withCamera) => void start(withCamera)}
         />
       )}
+      <RecIndicator secondsLeft={clip.secondsLeft} />
       {toast}
     </div>
   );

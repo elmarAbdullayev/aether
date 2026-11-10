@@ -11,8 +11,12 @@ export type VoiceCommand =
   | "gold"
   | "undo"
   | "clear"
+  | "particles"
+  | "matrix"
+  | "hologram"
   | "next"
-  | "save";
+  | "save"
+  | "record";
 
 /** The words one world listens to. Speech recognition often hears similar words, so some are accepted too. */
 export type Vocabulary = [VoiceCommand, RegExp][];
@@ -20,10 +24,12 @@ export type Vocabulary = [VoiceCommand, RegExp][];
 const NEXT: [VoiceCommand, RegExp] = ["next", /\bnext(\s+world)?\b/];
 const SAVE: [VoiceCommand, RegExp] = ["save", /\b(save|safe|saved)\b/];
 const RAINBOW: [VoiceCommand, RegExp] = ["rainbow", /\b(rainbow|rainbows)\b/];
+const RECORD: [VoiceCommand, RegExp] = ["record", /\b(record|recording|video)\b/];
 
 export const HAND_VOCABULARY: Vocabulary = [
   NEXT,
   SAVE,
+  RECORD,
   ["galaxy", /\bgalax(y|ies)\b/],
   ["fire", /\b(fire|fires|fiery|flame|flames)\b/],
   ["ice", /\b(ice|eyes|ice cold|frozen|snow)\b/],
@@ -33,6 +39,7 @@ export const HAND_VOCABULARY: Vocabulary = [
 export const DRAW_VOCABULARY: Vocabulary = [
   NEXT,
   SAVE,
+  RECORD,
   RAINBOW,
   ["red", /\b(red|read)\b/],
   ["blue", /\b(blue|blew)\b/],
@@ -40,6 +47,15 @@ export const DRAW_VOCABULARY: Vocabulary = [
   ["gold", /\b(gold|golden|yellow)\b/],
   ["undo", /\b(undo|under|and do|on do)\b/],
   ["clear", /\b(clear|clean|delete|erase)\b/],
+];
+
+export const MIRROR_VOCABULARY: Vocabulary = [
+  NEXT,
+  SAVE,
+  RECORD,
+  ["particles", /\b(particles?|parties|particular)\b/],
+  ["matrix", /\b(matrix|matrices|metrics)\b/],
+  ["hologram", /\b(holograms?|hollow ?grams?)\b/],
 ];
 
 /** All commands found in a piece of speech, in the order they were spoken. */

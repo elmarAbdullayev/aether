@@ -108,8 +108,8 @@ export class DrawSession {
   }
 
   /** Picture of the screen plus the drawing as 3D data (null when nothing is drawn). */
-  capture(): { image: string; sculpture: SculptureJSON | null } {
-    this.sound.shutter();
+  capture(silent = false): { image: string; sculpture: SculptureJSON | null } {
+    if (!silent) this.sound.shutter();
     const sculpture = this.scene.data.toJSON();
     return { image: this.scene.capture(), sculpture: sculpture.strokes.length ? sculpture : null };
   }

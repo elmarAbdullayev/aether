@@ -56,8 +56,9 @@ class Sculpture(BaseModel):
 
 class SaveImage(BaseModel):
     world: World
-    image: str = Field(description="Base64 data URL of a PNG, JPEG or WebP image")
+    image: str = Field(description="Base64 data URL of a PNG, JPEG or WebP image (the preview of a video)")
     sculpture: Sculpture | None = None
+    video: str | None = Field(default=None, description="Base64 data URL of a short WebM or MP4 clip")
 
 
 class ImageOut(BaseModel):
@@ -66,6 +67,7 @@ class ImageOut(BaseModel):
     created_at: str
     url: str
     has_sculpture: bool
+    video_url: str | None
 
 
 def _out(item: GalleryItem) -> ImageOut:
@@ -75,6 +77,7 @@ def _out(item: GalleryItem) -> ImageOut:
         created_at=item.created_at,
         url=f"/images/{item.filename}",
         has_sculpture=item.has_sculpture,
+        video_url=f"/images/{item.video_filename}" if item.video_filename else None,
     )
 
 
@@ -103,7 +106,7 @@ def create_app(data_dir: Path | None = None, site_dir: Path | None = None) -> Fa
     def save_image(body: SaveImage) -> ImageOut:
         sculpture = body.sculpture.model_dump() if body.sculpture else None
         try:
-            item = gallery.add(body.world, body.image, sculpture)
+            item = gallery.add(body.world, body.image, sculpture, body.video)
         except InvalidImage as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         return _out(item)

@@ -21,6 +21,8 @@ export function WorldIntro(props: {
   stage: Stage;
   error: string | null;
   onStart(withCamera: boolean): void;
+  /** this world needs the camera, so there is no mouse button */
+  cameraOnly?: boolean;
 }) {
   const starting = props.stage === "starting";
   return (
@@ -34,9 +36,11 @@ export function WorldIntro(props: {
             <Camera />
             {starting ? "Waking up the camera…" : "Start with camera"}
           </button>
-          <button type="button" className="btn ghost" onClick={() => props.onStart(false)} disabled={starting}>
-            Play with mouse
-          </button>
+          {!props.cameraOnly && (
+            <button type="button" className="btn ghost" onClick={() => props.onStart(false)} disabled={starting}>
+              Play with mouse
+            </button>
+          )}
         </div>
         {props.error && (
           <p className="intro-error" role="alert">

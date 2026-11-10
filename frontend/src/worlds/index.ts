@@ -41,9 +41,10 @@ export const WORLDS: WorldInfo[] = [
     number: "03",
     name: "Hologram Mirror",
     tagline: "Become a being of light.",
-    description: "The camera turns you into a hologram made of particles or falling letters. Change the style with a gesture.",
-    inputs: ["Camera"],
-    ready: false,
+    description:
+      "The camera turns you into light: particles, falling green letters or a flickering blue hologram. Wave to change the style, make a fist to fall apart into dust.",
+    inputs: ["Camera", "Voice"],
+    ready: true,
   },
   {
     id: "voice",

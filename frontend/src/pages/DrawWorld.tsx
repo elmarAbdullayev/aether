@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { saveImage } from "../api/gallery";
-import { Image, Trash, Undo, Video } from "../components/icons";
+import { Image, Record, Trash, Undo, Video } from "../components/icons";
+import { RecIndicator, useClipRecorder } from "../components/Recorder";
 import { useToast } from "../components/Toast";
 import { TopBar } from "../components/TopBar";
 import {
@@ -77,7 +78,7 @@ export default function DrawWorld() {
     const { image, sculpture } = session.capture();
     setFlash((f) => f + 1);
     try {
-      await saveImage("draw", image, sculpture);
+      await saveImage("draw", image, { sculpture });
       showToast(
         <>
           {sculpture ? "Saved in 3D." : "Picture saved."} <Link to="/gallery">Open the gallery</Link>
@@ -98,10 +99,21 @@ export default function DrawWorld() {
     sessionRef.current?.clear();
   }, []);
 
+  const clip = useClipRecorder({
+    world: "draw",
+    canvas: () => sessionRef.current?.scene.stage.canvas ?? null,
+    audio: () => sessionRef.current?.sound.captureStream() ?? null,
+    poster: () => sessionRef.current?.capture(true).image ?? null,
+    toast: showToast,
+  });
+  const recordRef = useRef(clip.record);
+  recordRef.current = clip.record;
+
   commandRef.current = (command) => {
     const session = sessionRef.current;
     if (!session) return;
     if (command === "save") void save();
+    else if (command === "record") clip.record();
     else if (command === "next") navigate(nextWorld("draw").path);
     else if (command === "undo") undo();
     else if (command === "clear") clear();
@@ -118,6 +130,7 @@ export default function DrawWorld() {
       else if (key === "z" || e.key === "Backspace") undo();
       else if (key === "x" || e.key === "Delete") clear();
       else if (key === "s") void save();
+      else if (key === "r") recordRef.current();
       else if (key === "c") setPreview((p) => !p);
       else if (key === "n") navigate(nextWorld("draw").path);
       else return;
@@ -180,6 +193,15 @@ export default function DrawWorld() {
               <Trash />
               <span className="sr-only">Clear</span>
             </button>
+            <button
+              type="button"
+              className={`icon-btn rec-btn${clip.secondsLeft !== null ? " is-on" : ""}`}
+              onClick={clip.record}
+              title="Record a 5 second video (R)"
+            >
+              <Record />
+              <span className="sr-only">Record video</span>
+            </button>
             <button type="button" className="icon-btn" onClick={() => void save()} title="Save picture and 3D sculpture (S)">
               <Image />
               <span className="sr-only">Save</span>
@@ -230,7 +252,7 @@ export default function DrawWorld() {
             voice={voice}
             readLevel={readLevel}
             heard={heard}
-            hint={<>Say “red”, “blue”, “green”, “gold”, “rainbow”, “undo”, “clear” or “save”</>}
+            hint={<>Say “red”, “blue”, “green”, “gold”, “rainbow”, “undo”, “clear”, “save” or “record”</>}
           />
           <GestureGuide items={guide} />
 
@@ -269,6 +291,7 @@ export default function DrawWorld() {
           onStart={(withCamera) => void start(withCamera)}
         />
       )}
+      <RecIndicator secondsLeft={clip.secondsLeft} />
       {toast}
     </div>
   );

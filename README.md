@@ -23,7 +23,7 @@ There is nothing to install and no account. The camera picture never leaves your
 | --- | --- | --- | --- |
 | 01 | **Hand Magic** (`/hand`) | Particles follow your hand. Fist, open hand, pinch, two hands. | ✅ Ready |
 | 02 | **Air Drawing** (`/draw`) | Paint neon light into the air. It turns into a 3D sculpture you can save and turn. | ✅ Ready |
-| 03 | Hologram Mirror (`/mirror`) | The camera turns you into a hologram of particles or letters. | Planned |
+| 03 | **Hologram Mirror** (`/mirror`) | You become light: particles, falling letters or a blue hologram. Fall apart into dust. | ✅ Ready |
 | 04 | Voice World (`/voice`) | Your voice grows a living landscape. | Planned |
 
 ### Hand Magic: what you can do
@@ -56,6 +56,30 @@ sculpture turns under the pen, so every line becomes a real 3D curve.
 **Mouse:** left button draws, right button turns, wheel zooms.
 **Save** stores the picture *and* the 3D data. In the gallery, drawings marked **3D** open as a sculpture you can turn with the mouse.
 
+### Hologram Mirror: what you can do
+
+The camera separates you from the room (person segmentation) and every part of you becomes a point of light.
+
+| Style | Look |
+| --- | --- |
+| Particles | Glowing dots in your real colors, with depth from light and shadow |
+| Matrix | Falling green letters, only inside your body |
+| Hologram | Blue sci-fi hologram with scan lines, a glowing outline and glitches |
+
+| Gesture | What happens |
+| --- | --- |
+| 👋 Wave quickly left or right | Previous or next style |
+| ✊ Fist | You fall apart into dust that blows away |
+| 🖐️ Open hand | The dust flies back and builds you again |
+
+**Voice commands:** `particles`, `matrix`, `hologram`, `save`, `record`. **Keyboard:** `1`–`3`, arrow keys, `S`, `R`.
+This world needs a camera.
+
+### Video clips (all worlds)
+
+Say `record`, press `R` or use the record button: Aether records **5 seconds** of the world with its sounds (never the microphone)
+and saves the clip in the gallery. The browser records MP4 when it can, otherwise WebM.
+
 ## How it works
 
 ```
@@ -76,6 +100,13 @@ webcam ──► MediaPipe Hand Landmarker (WebAssembly + GPU, in the browser)
 saved picture ──► FastAPI /api/gallery ──► file on disk + row in SQLite
 3D drawing ─────► validated by Pydantic (colors, number of points) ──► JSON in SQLite
                   ──► GET /api/gallery/{id}/sculpture ──► 3D viewer with orbit controls
+video clip ─────► canvas.captureStream + Web Audio stream ──► MediaRecorder (MP4/WebM)
+                  ──► checked by its file header ──► file on disk, played in the gallery
+
+Hologram Mirror:
+webcam ──► MediaPipe Image Segmenter (selfie, landscape) ──► person mask 256 × 144
+       ──► camera picture read as a 168 × 95 grid ──► 16,000 points, shaded per style
+           (letters come from one texture with 64 glyphs, picked in the fragment shader)
 ```
 
 Both worlds share one engine: `stage.ts` (renderer, star sky, bloom), `handInput.ts` (camera hands and a mouse
@@ -83,12 +114,13 @@ Both worlds share one engine: `stage.ts` (renderer, star sky, bloom), `handInput
 
 - **Frontend:** React 19, TypeScript, Vite, Three.js, MediaPipe Tasks Vision, Web Speech API, Web Audio API
 - **Backend:** FastAPI, Pydantic, SQLite, served by Uvicorn. After a build it also serves the website, so everything runs on one port.
-- **Tests:** Vitest for gesture rules, voice matching and the sculpture model; pytest for the gallery API (pictures, sculptures, database upgrade).
+- **Tests:** Vitest for gesture rules, swipe detection, voice matching and the sculpture model; pytest for the gallery API (pictures, sculptures, videos, database upgrade).
 
 ### Privacy
 
-- Hand detection runs fully in the browser. No video frame is sent anywhere.
-- The hand model file (about 8 MB) is loaded from Google's MediaPipe model storage when you start the camera.
+- Hand detection and person segmentation run fully in the browser. No camera frame is sent anywhere.
+- The model files are loaded from Google's MediaPipe model storage when you start the camera.
+- Video clips record only the 3D picture and the world's own sounds, never the camera or the microphone.
 - Voice commands use the browser's speech recognition. Edge and Chrome send the audio to their speech service to turn it into text.
 - Saved pictures stay on your computer (`backend/data`).
 
@@ -136,7 +168,9 @@ frontend/
   src/audio/         sounds made with Web Audio, including the theremin
   src/worlds/hand/   Hand Magic: rules and the frame loop
   src/worlds/draw/   Air Drawing: turning scene, rules and the frame loop
-  src/components/    shared interface parts and the 3D sculpture viewer
+  src/worlds/mirror/ Hologram Mirror: the three styles, dust effect and the frame loop
+  src/media/         video clip recording
+  src/components/    shared interface parts, 3D sculpture viewer, recorder
   src/pages/         start page, worlds, gallery
 start.cmd            install, build and run on Windows
 ```

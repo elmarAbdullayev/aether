@@ -97,8 +97,8 @@ export class HandSession {
     this.preview = canvas?.getContext("2d") ?? null;
   }
 
-  capture(): string {
-    this.sound.shutter();
+  capture(silent = false): string {
+    if (!silent) this.sound.shutter();
     return this.world.capture();
   }
 

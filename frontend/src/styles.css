@@ -920,6 +920,41 @@ h2 {
   z-index: 4;
 }
 
+/* ---------------------------------------------------------------- recording */
+
+.rec-btn.is-on {
+  color: #ff3d6e;
+  border-color: #ff3d6e;
+  background: rgba(255, 61, 110, 0.18);
+}
+
+.rec {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(20, 4, 10, 0.8);
+  border: 1px solid #ff3d6e;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3d6e;
+  box-shadow: 0 0 12px #ff3d6e;
+  animation: hint-pulse 1s ease-in-out infinite;
+}
+
 /* ---------------------------------------------------------------- toast */
 
 .toast-area {
@@ -1061,6 +1096,33 @@ h2 {
   letter-spacing: 0.08em;
   color: #05050f;
   background: linear-gradient(120deg, #33f0d0, #ff3df0);
+}
+
+.thumb-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(4, 4, 12, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.thumb-play svg {
+  width: 22px;
+  height: 22px;
+  margin-left: 3px;
+}
+
+.lightbox video {
+  max-width: 94vw;
+  max-height: 88vh;
+  border-radius: 16px;
+  cursor: default;
 }
 
 .viewer {
