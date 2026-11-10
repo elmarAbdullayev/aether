@@ -85,7 +85,7 @@ export default function HandWorld() {
         </>,
       );
     } catch (e) {
-      showToast(`Could not save: ${e instanceof Error ? e.message : e}. Is the Aether server running?`, "error");
+      showToast(`Could not save: ${e instanceof Error ? e.message : e}`, "error");
     }
   }, [showToast]);
 

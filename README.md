@@ -146,7 +146,7 @@ Both worlds share one engine: `stage.ts` (renderer, star sky, bloom), `handInput
 - The model files are loaded from Google's MediaPipe model storage when you start the camera.
 - Video clips record only the 3D picture and the world's own sounds, never the camera or the microphone.
 - Voice commands use the browser's speech recognition. Edge and Chrome send the audio to their speech service to turn it into text.
-- Saved pictures stay on your computer (`backend/data`).
+- Saved pictures stay on your computer: in `backend/data` when you run it locally, in the browser's own storage online.
 
 ## Run it
 
@@ -170,6 +170,11 @@ npm run dev        # http://localhost:5173, /api is forwarded to port 8020
 ```
 
 Use Edge or Chrome. The camera only works on `localhost`, `127.0.0.1` or HTTPS.
+
+**Online (Vercel):** the repository contains `vercel.json`, so importing it on Vercel needs no settings. Vercel builds only
+the website. Without the FastAPI server, the gallery automatically switches to the visitor's own browser storage
+(IndexedDB): pictures, videos and 3D sculptures stay on that device. A public upload server would need paid storage and
+moderation; this way the online version is free and private.
 
 **Tests:**
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { deleteImage, listImages, type GalleryImage } from "../api/gallery";
+import { deleteImage, galleryMode, listImages, type GalleryImage, type GalleryMode } from "../api/gallery";
 import { Close, Cube, Download, Play, Trash } from "../components/icons";
 import { SculptureViewer } from "../components/SculptureViewer";
 import { useToast } from "../components/Toast";
@@ -25,8 +25,10 @@ export default function Gallery() {
   const [view3d, setView3d] = useState<GalleryImage | null>(null);
   const closeViewer = useCallback(() => setView3d(null), []);
   const [toast, showToast] = useToast();
+  const [mode, setMode] = useState<GalleryMode | null>(null);
 
   useEffect(() => {
+    void galleryMode().then(setMode);
     listImages()
       .then(setImages)
       .catch(() => setFailed(true));
@@ -60,11 +62,17 @@ export default function Gallery() {
           Pictures you saved from the worlds. Say “save” or press S while you play. Drawings marked 3D open as a
           sculpture you can turn.
         </p>
+        {mode === "browser" && (
+          <p className="fineprint gallery-note">
+            Your pictures and videos are kept only in this browser, on this device. Nobody else can see them. Download the
+            ones you want to keep.
+          </p>
+        )}
 
         {failed && (
           <div className="empty">
-            <p>The gallery server is not running.</p>
-            <p className="fineprint">Start Aether with start.cmd, or run the FastAPI backend on port 8020.</p>
+            <p>The gallery could not be loaded.</p>
+            <p className="fineprint">The browser may block its storage here (private window). Locally, start Aether with start.cmd.</p>
           </div>
         )}
         {!failed && images === null && <p className="fineprint">Loading…</p>}
@@ -116,7 +124,7 @@ export default function Gallery() {
                       <a
                         className="icon-btn"
                         href={img.video_url ?? img.url}
-                        download={`aether-${img.world}-${img.id.slice(0, 6)}${extension(img.video_url ?? img.url)}`}
+                        download={`aether-${img.world}-${img.id.slice(0, 6)}${img.ext ?? extension(img.video_url ?? img.url)}`}
                         title={img.video_url ? "Download video" : "Download"}
                       >
                         <Download />
