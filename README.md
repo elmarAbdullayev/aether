@@ -171,8 +171,8 @@ npm run dev        # http://localhost:5173, /api is forwarded to port 8020
 
 Use Edge or Chrome. The camera only works on `localhost`, `127.0.0.1` or HTTPS.
 
-**Online (Vercel):** the repository contains `vercel.json`, so importing it on Vercel needs no settings. Vercel builds only
-the website. Without the FastAPI server, the gallery automatically switches to the visitor's own browser storage
+**Online (Vercel):** import the repository and choose **only the `frontend` folder** (Root Directory `frontend`, preset Vite).
+`frontend/vercel.json` sends every route to the app. Without the FastAPI server, the gallery automatically switches to the visitor's own browser storage
 (IndexedDB): pictures, videos and 3D sculptures stay on that device. A public upload server would need paid storage and
 moderation; this way the online version is free and private.
 
