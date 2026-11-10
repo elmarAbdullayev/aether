@@ -49,6 +49,8 @@ export type VoiceState =
 export interface VoiceCallbacks {
   onCommand(command: VoiceCommand): void;
   onHeard(text: string): void;
+  /** a finished phrase (Voice World turns it into flying letters) */
+  onFinal?(text: string): void;
   /** detail: the browser's error code, to show when something goes wrong */
   onState(state: VoiceState, detail?: string): void;
   /** true while the speech service hears someone talking */
@@ -136,6 +138,7 @@ export class VoiceControl {
         const result = event.results[i];
         const text = result[0]?.transcript ?? "";
         if (text.trim()) this.callbacks.onHeard(text.trim());
+        if (result.isFinal && text.trim()) this.callbacks.onFinal?.(text.trim());
         const done = this.fired.get(i) ?? new Set<VoiceCommand>();
         for (const command of findCommands(text, this.vocabulary)) {
           if (done.has(command)) continue;

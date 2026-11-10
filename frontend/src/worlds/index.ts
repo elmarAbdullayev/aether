@@ -52,9 +52,10 @@ export const WORLDS: WorldInfo[] = [
     number: "04",
     name: "Voice World",
     tagline: "Your voice grows a living landscape.",
-    description: "Speak loud and mountains rise. High and low notes paint the sky. Your words turn into glowing objects.",
-    inputs: ["Voice"],
-    ready: false,
+    description:
+      "Fly over a neon land your voice builds: loud makes mountains, high and low notes paint the sky, your words fly past in light. Say rain, snow, moon or storm.",
+    inputs: ["Microphone", "Voice"],
+    ready: true,
   },
 ];
 

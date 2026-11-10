@@ -14,6 +14,10 @@ export type VoiceCommand =
   | "particles"
   | "matrix"
   | "hologram"
+  | "rain"
+  | "snow"
+  | "moon"
+  | "storm"
   | "next"
   | "save"
   | "record";
@@ -56,6 +60,16 @@ export const MIRROR_VOCABULARY: Vocabulary = [
   ["particles", /\b(particles?|parties|particular)\b/],
   ["matrix", /\b(matrix|matrices|metrics)\b/],
   ["hologram", /\b(holograms?|hollow ?grams?)\b/],
+];
+
+export const VOICE_VOCABULARY: Vocabulary = [
+  NEXT,
+  SAVE,
+  RECORD,
+  ["rain", /\b(rain|raining|rainy|reign)\b/],
+  ["snow", /\b(snow|snowing|snowy)\b/],
+  ["moon", /\b(moon|moons|moonlight)\b/],
+  ["storm", /\b(storm|storms|stormy|thunder|lightning)\b/],
 ];
 
 /** All commands found in a piece of speech, in the order they were spoken. */

@@ -17,6 +17,9 @@ There is nothing to install and no account. The camera picture never leaves your
 ![A 3D light sculpture drawn in the air: a rainbow spiral on a blue base](docs/air-drawing.png)
 *Air Drawing: the sculpture turns while you draw, so a hand that only moves up and down draws a 3D spiral.*
 
+![A neon landscape shaped by the voice, a retro sun and the words "hello aether" flying in the sky](docs/voice-world.png)
+*Voice World: the mountains are the shape of the voice, the spoken words fly past in letters of light.*
+
 ## Worlds
 
 | # | World | Idea | Status |
@@ -24,7 +27,7 @@ There is nothing to install and no account. The camera picture never leaves your
 | 01 | **Hand Magic** (`/hand`) | Particles follow your hand. Fist, open hand, pinch, two hands. | ✅ Ready |
 | 02 | **Air Drawing** (`/draw`) | Paint neon light into the air. It turns into a 3D sculpture you can save and turn. | ✅ Ready |
 | 03 | **Hologram Mirror** (`/mirror`) | You become light: particles, falling letters or a blue hologram. Fall apart into dust. | ✅ Ready |
-| 04 | Voice World (`/voice`) | Your voice grows a living landscape. | Planned |
+| 04 | **Voice World** (`/voice`) | Fly over a neon land your voice builds; your words fly past in light. | ✅ Ready |
 
 ### Hand Magic: what you can do
 
@@ -75,6 +78,21 @@ The camera separates you from the room (person segmentation) and every part of y
 **Voice commands:** `particles`, `matrix`, `hologram`, `save`, `record`. **Keyboard:** `1`–`3`, arrow keys, `S`, `R`.
 This world needs a camera.
 
+### Voice World: what you can do
+
+Only the microphone is needed. You fly over a neon landscape; every new row of hills at the horizon is the shape of your voice
+at that moment.
+
+| You do | What happens |
+| --- | --- |
+| 🔊 Speak, sing or whistle louder | Higher mountains, a bigger sun |
+| 🎵 Use a low or a high voice | Low notes build mountains in the middle and paint the sky red and purple; high notes build them at the sides and paint it blue |
+| 💬 Say anything | Your words fly toward you in glowing letters and burst into sparks |
+| ✨ Say `rain`, `snow`, `moon` or `storm` | Rain, snow, a rising moon, or lightning and thunder |
+| 🤫 Stay silent | The land calms down into a sea of small waves |
+
+There is no background music in this world: the microphone would hear it and build mountains from it.
+
 ### Video clips (all worlds)
 
 Say `record`, press `R` or use the record button: Aether records **5 seconds** of the world with its sounds (never the microphone)
@@ -107,6 +125,12 @@ Hologram Mirror:
 webcam ──► MediaPipe Image Segmenter (selfie, landscape) ──► person mask 256 × 144
        ──► camera picture read as a 168 × 95 grid ──► 16,000 points, shaded per style
            (letters come from one texture with 64 glyphs, picked in the fragment shader)
+
+Voice World:
+microphone ──► AnalyserNode (FFT 2048) ──► loudness (RMS), pitch (normalized autocorrelation),
+                                           48 frequency bands on a log scale
+           ──► new terrain row: band k at distance k from the middle ──► 7,800 grid points as neon lines
+speech     ──► finished phrases ──► drawn on a hidden canvas ──► pixels become flying points
 ```
 
 Both worlds share one engine: `stage.ts` (renderer, star sky, bloom), `handInput.ts` (camera hands and a mouse
@@ -114,7 +138,7 @@ Both worlds share one engine: `stage.ts` (renderer, star sky, bloom), `handInput
 
 - **Frontend:** React 19, TypeScript, Vite, Three.js, MediaPipe Tasks Vision, Web Speech API, Web Audio API
 - **Backend:** FastAPI, Pydantic, SQLite, served by Uvicorn. After a build it also serves the website, so everything runs on one port.
-- **Tests:** Vitest for gesture rules, swipe detection, voice matching and the sculpture model; pytest for the gallery API (pictures, sculptures, videos, database upgrade).
+- **Tests:** Vitest for gesture rules, swipe detection, pitch detection and frequency bands, voice matching and the sculpture model; pytest for the gallery API (pictures, sculptures, videos, database upgrade).
 
 ### Privacy
 
@@ -164,11 +188,12 @@ backend/
 frontend/
   src/engine/        shared 3D stage, particle world, element shapes, light sculptures, sparks
   src/vision/        camera + MediaPipe, gesture rules (unit tested), camera and mouse input
-  src/voice/         speech recognition and command matching (unit tested)
+  src/voice/         speech recognition, command matching, pitch and band analysis (unit tested)
   src/audio/         sounds made with Web Audio, including the theremin
   src/worlds/hand/   Hand Magic: rules and the frame loop
   src/worlds/draw/   Air Drawing: turning scene, rules and the frame loop
   src/worlds/mirror/ Hologram Mirror: the three styles, dust effect and the frame loop
+  src/worlds/voice/  Voice World: terrain, sky, sun, weather, flying words
   src/media/         video clip recording
   src/components/    shared interface parts, 3D sculpture viewer, recorder
   src/pages/         start page, worlds, gallery

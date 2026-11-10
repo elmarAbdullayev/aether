@@ -7,6 +7,7 @@ const Home = lazy(() => import("./pages/Home"));
 const HandWorld = lazy(() => import("./pages/HandWorld"));
 const DrawWorld = lazy(() => import("./pages/DrawWorld"));
 const MirrorWorld = lazy(() => import("./pages/MirrorWorld"));
+const VoiceWorld = lazy(() => import("./pages/VoiceWorld"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const ComingSoon = lazy(() => import("./pages/ComingSoon"));
 
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/hand" element={<HandWorld />} />
             <Route path="/draw" element={<DrawWorld />} />
             <Route path="/mirror" element={<MirrorWorld />} />
+            <Route path="/voice" element={<VoiceWorld />} />
             {WORLDS.filter((w) => !w.ready).map((w) => (
               <Route key={w.id} path={w.path} element={<ComingSoon world={w} />} />
             ))}

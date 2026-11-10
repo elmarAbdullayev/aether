@@ -643,6 +643,51 @@ h2 {
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
 }
 
+.meters {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.meters > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.meter-label {
+  color: var(--muted);
+  width: 64px;
+}
+
+.meter-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, #ff5fd2, #3dd8ff);
+}
+
+.meter-value {
+  font-variant-numeric: tabular-nums;
+}
+
 .draw-hint {
   position: absolute;
   left: 50%;

@@ -16,6 +16,9 @@ export class Sound {
   private muted = false;
   private calm = false;
 
+  /** pad: the soft background chord. Off in Voice World, where the microphone would hear it. */
+  constructor(private readonly options: { pad?: boolean } = {}) {}
+
   /** Call from a click or key press. */
   unlock(): void {
     if (this.ctx) {
@@ -43,7 +46,7 @@ export class Sound {
     const data = this.noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
 
-    this.startPad();
+    if (this.options.pad !== false) this.startPad();
   }
 
   setMuted(muted: boolean): void {
@@ -297,6 +300,32 @@ export class Sound {
   /** Rising shimmer when the hologram builds itself again. */
   reform(): void {
     this.bell([392, 523.3, 659.3, 784, 1046.5, 1318.5], 0.09, 1.4, 0.07);
+  }
+
+  /** Very quiet bells for the magic words of Voice World. */
+  chime(kind: "rain" | "snow" | "moon"): void {
+    const notes = { rain: [880, 1174.7, 1568], snow: [1318.5, 1760, 2093], moon: [523.3, 659.3, 784, 1046.5] };
+    this.bell(notes[kind], 0.06, 1.6, kind === "moon" ? 0.12 : 0.06);
+  }
+
+  /** Low, quiet rumble after a lightning flash. */
+  thunder(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime + 0.15;
+    const src = this.noiseSource();
+    src.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 170;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.4);
+    src.connect(filter).connect(gain);
+    this.out(gain, 0.5);
+    src.start(now);
+    src.stop(now + 2.5);
   }
 
   /** Camera shutter for "save". */

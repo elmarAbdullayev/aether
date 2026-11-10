@@ -14,6 +14,14 @@ export function cameraError(error: unknown): string {
   return `Hand tracking could not start (${error instanceof Error ? error.message : String(error)}). Check your internet connection: the hand model loads from Google.`;
 }
 
+export function micError(error: unknown): string {
+  const name = error instanceof DOMException ? error.name : "";
+  if (name === "NotAllowedError") return "Microphone access was blocked. Click the lock icon in the address bar and allow it.";
+  if (name === "NotFoundError" || name === "OverconstrainedError") return "No microphone found. Plug one in and try again.";
+  if (name === "NotReadableError") return "The microphone is busy in another app (Teams, Zoom…). Close it there and try again.";
+  return `The microphone could not start (${error instanceof Error ? error.message : String(error)}).`;
+}
+
 export function WorldIntro(props: {
   number: string;
   title: string;
@@ -23,8 +31,36 @@ export function WorldIntro(props: {
   onStart(withCamera: boolean): void;
   /** this world needs the camera, so there is no mouse button */
   cameraOnly?: boolean;
+  /** this world only needs the microphone */
+  micOnly?: boolean;
 }) {
   const starting = props.stage === "starting";
+  if (props.micOnly) {
+    return (
+      <div className="intro">
+        <div className="intro-card">
+          <p className="eyebrow">World {props.number}</p>
+          <h1>{props.title}</h1>
+          <p className="lead">{props.lead}</p>
+          <div className="intro-actions">
+            <button type="button" className="btn primary" onClick={() => props.onStart(false)} disabled={starting}>
+              <Mic />
+              {starting ? "Opening the microphone…" : "Start with microphone"}
+            </button>
+          </div>
+          {props.error && (
+            <p className="intro-error" role="alert">
+              {props.error}
+            </p>
+          )}
+          <p className="fineprint">
+            The landscape listens to your microphone right here in the browser; no sound is uploaded for it. Only for the
+            flying words the browser turns your speech into text with its own speech service.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="intro">
       <div className="intro-card">

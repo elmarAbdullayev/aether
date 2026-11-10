@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { DRAW_VOCABULARY, findCommands, HAND_VOCABULARY, MIRROR_VOCABULARY } from "./commands";
+import { DRAW_VOCABULARY, findCommands, HAND_VOCABULARY, MIRROR_VOCABULARY, VOICE_VOCABULARY } from "./commands";
+
+describe("findCommands in Voice World", () => {
+  it.each([
+    ["let it rain", ["rain"]],
+    ["snow please", ["snow"]],
+    ["the moon", ["moon"]],
+    ["thunder and lightning", ["storm"]],
+    ["hello world", []],
+  ])("%s", (text, expected) => {
+    expect(findCommands(text, VOICE_VOCABULARY)).toEqual(expected);
+  });
+});
 
 describe("findCommands in Hologram Mirror", () => {
   it.each([

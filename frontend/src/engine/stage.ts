@@ -87,6 +87,8 @@ export class Stage {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.9, 0.15, 0.28);
     // weaker wide blur levels: keeps the glow near the light instead of a haze over the whole sky
     this.bloom.compositeMaterial.uniforms.bloomFactors.value = [1.0, 0.75, 0.4, 0.12, 0.03];
+    // soft threshold: a large area just above the threshold should glow a little, not jump to white
+    (this.bloom.highPassUniforms as Record<string, THREE.IUniform>).smoothWidth.value = 0.15;
     this.composer.addPass(this.bloom);
     this.resize();
   }
