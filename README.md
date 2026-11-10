@@ -4,6 +4,8 @@
 Aether is a browser experience: your webcam finds your hands, 20,000 glowing particles react to your gestures, and you change the world by speaking.
 There is nothing to install and no account. The camera picture never leaves your computer.
 
+**▶ Live: [aether-seven-gules.vercel.app](https://aether-seven-gules.vercel.app)** (best in Edge or Chrome on a laptop with a webcam)
+
 ![A spiral galaxy made of 20,000 particles](docs/galaxy.png)
 
 | Make a fist: black hole | Open the hand: explosion |
