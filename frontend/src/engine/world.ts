@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import type { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { createElements, ELEMENT_ORDER, PARAM_STRIDE, type ElementDef, type ElementName, type Out3 } from "./elements";
+import { HAND_LINKS, FINGERTIPS } from "./hand";
+import { mulberry32, Stage } from "./stage";
 
 /** A point that pulls particles into a swirl and drags them along (a fingertip). */
 export interface Attractor {
@@ -42,36 +42,6 @@ const MAX_STARS = 6;
 const TRAIL = 28;
 const MAX_FX = 420;
 const MAX_HAND_LINES = 4 * 21;
-const HAND_LINKS = [
-  0, 1, 1, 2, 2, 3, 3, 4, 0, 5, 5, 6, 6, 7, 7, 8, 5, 9, 9, 10, 10, 11, 11, 12, 9, 13, 13, 14, 14, 15, 15, 16, 13, 17,
-  17, 18, 18, 19, 19, 20, 0, 17,
-];
-const FINGERTIPS = new Set([4, 8, 12, 16, 20]);
-const CAMERA_Z = 10;
-const FOV = 60;
-
-const POINT_VERTEX = /* glsl */ `
-  attribute vec3 aColor;
-  attribute float aSize;
-  uniform float uScale;
-  varying vec3 vColor;
-  void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mv;
-    gl_PointSize = max(1.0, aSize * uScale / -mv.z);
-    vColor = aColor;
-  }
-`;
-
-const POINT_FRAGMENT = /* glsl */ `
-  varying vec3 vColor;
-  void main() {
-    vec2 c = gl_PointCoord - 0.5;
-    float d = dot(c, c) * 4.0;
-    if (d > 1.0) discard;
-    gl_FragColor = vec4(vColor, pow(1.0 - d, 2.2));
-  }
-`;
 
 const DISK_VERTEX = /* glsl */ `
   varying vec2 vPos;
@@ -102,28 +72,6 @@ function holeRadius(charge: number): number {
   return 0.3 + 0.55 * charge;
 }
 
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function pointMaterial(): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    vertexShader: POINT_VERTEX,
-    fragmentShader: POINT_FRAGMENT,
-    uniforms: { uScale: { value: 900 } },
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-}
-
 interface HoleVisual {
   group: THREE.Group;
   disk: THREE.Mesh<THREE.RingGeometry, THREE.ShaderMaterial>;
@@ -146,10 +94,9 @@ export class ParticleWorld {
   targetScale = 1;
   calm = false;
 
-  private renderer: THREE.WebGLRenderer;
-  private scene = new THREE.Scene();
+  readonly stage: Stage;
+  private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
-  private composer: EffectComposer;
   private bloom: UnrealBloomPass;
 
   private count: number;
@@ -174,7 +121,6 @@ export class ParticleWorld {
 
   private holeVisuals: HoleVisual[] = [];
   private shockwaves: Shockwave[] = [];
-  private starfield: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
 
   private ambient: boolean;
   private time = 0;
@@ -195,13 +141,10 @@ export class ParticleWorld {
     this.count = options.count ?? 22000;
     this.active = this.count;
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
-    // Our colors are written as they should look on screen. Without this the bloom pass
-    // converts them to sRGB a second time and everything turns pale and grey-blue.
-    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    this.renderer.setClearColor(new THREE.Color().setRGB(3 / 255, 3 / 255, 10 / 255, THREE.LinearSRGBColorSpace), 1);
-    this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 200);
-    this.camera.position.z = CAMERA_Z;
+    this.stage = new Stage(canvas, { maxPixelRatio: this.ambient ? 1.25 : 1.5 });
+    this.scene = this.stage.scene;
+    this.camera = this.stage.camera;
+    this.bloom = this.stage.bloom;
 
     const rand = mulberry32(7);
     this.elements = createElements();
@@ -235,18 +178,15 @@ export class ParticleWorld {
     geometry.setAttribute("position", new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
     geometry.setAttribute("aColor", new THREE.BufferAttribute(this.col, 3).setUsage(THREE.DynamicDrawUsage));
     geometry.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
-    this.points = new THREE.Points(geometry, pointMaterial());
+    this.points = new THREE.Points(geometry, this.stage.pointMaterial());
     this.points.frustumCulled = false;
     this.scene.add(this.points);
-
-    this.starfield = this.createStarfield(rand);
-    this.scene.add(this.starfield);
 
     const fxGeometry = new THREE.BufferGeometry();
     fxGeometry.setAttribute("position", new THREE.BufferAttribute(this.fxPos, 3).setUsage(THREE.DynamicDrawUsage));
     fxGeometry.setAttribute("aColor", new THREE.BufferAttribute(this.fxCol, 3).setUsage(THREE.DynamicDrawUsage));
     fxGeometry.setAttribute("aSize", new THREE.BufferAttribute(this.fxSize, 1).setUsage(THREE.DynamicDrawUsage));
-    this.fx = new THREE.Points(fxGeometry, pointMaterial());
+    this.fx = new THREE.Points(fxGeometry, this.stage.pointMaterial());
     this.fx.frustumCulled = false;
     this.fx.material.depthTest = false;
     this.fx.renderOrder = 3;
@@ -289,18 +229,6 @@ export class ParticleWorld {
       this.shockwaves.push({ mesh, age: 99, power: 0 });
     }
 
-    // 8-bit buffer on purpose: thousands of overlapping particles are clipped at white
-    // before the bloom, otherwise the glow grows into a huge white disc.
-    this.composer = new EffectComposer(
-      this.renderer,
-      new THREE.WebGLRenderTarget(1, 1, { type: THREE.UnsignedByteType }),
-    );
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.9, 0.15, 0.28);
-    // weaker wide blur levels: keeps the glow near the light instead of a haze over the whole sky
-    this.bloom.compositeMaterial.uniforms.bloomFactors.value = [1.0, 0.75, 0.4, 0.12, 0.03];
-    this.composer.addPass(this.bloom);
-
     this.resize();
   }
 
@@ -318,27 +246,15 @@ export class ParticleWorld {
   }
 
   resize(): void {
-    const width = Math.max(1, this.canvas.clientWidth);
-    const height = Math.max(1, this.canvas.clientHeight);
-    const ratio = Math.min(window.devicePixelRatio || 1, this.ambient ? 1.25 : 1.5);
-    this.renderer.setPixelRatio(ratio);
-    this.renderer.setSize(width, height, false);
-    this.composer.setPixelRatio(ratio);
-    this.composer.setSize(width, height);
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.halfH = Math.tan(((FOV / 2) * Math.PI) / 180) * CAMERA_Z;
-    this.halfW = this.halfH * this.camera.aspect;
-    this.baseScale = Math.min(1, Math.max(0.42, this.camera.aspect / 1.3));
-    const scale = (height * ratio) / (2 * Math.tan(((FOV / 2) * Math.PI) / 180));
-    this.points.material.uniforms.uScale.value = scale;
-    this.fx.material.uniforms.uScale.value = scale;
-    this.starfield.material.uniforms.uScale.value = scale;
+    this.stage.resize();
+    this.halfW = this.stage.halfW;
+    this.halfH = this.stage.halfH;
+    this.baseScale = Math.min(1, Math.max(0.42, this.stage.aspect / 1.3));
   }
 
   /** Screen position (0..1, y down) to world position at depth 0. */
   toWorld(sx: number, sy: number): { x: number; y: number } {
-    return { x: (sx - 0.5) * 2 * this.halfW, y: (0.5 - sy) * 2 * this.halfH };
+    return this.stage.toWorld(sx, sy);
   }
 
   setElement(name: ElementName): void {
@@ -569,7 +485,7 @@ export class ParticleWorld {
     this.updateHoles(dt);
     this.updateShockwaves(dt);
 
-    this.starfield.rotation.z = t * 0.004;
+    this.stage.starfield.rotation.z = t * 0.004;
     this.shake *= Math.pow(0.02, dt);
     this.camera.position.x = (Math.random() - 0.5) * this.shake;
     this.camera.position.y = (Math.random() - 0.5) * this.shake;
@@ -579,25 +495,16 @@ export class ParticleWorld {
   }
 
   render(): void {
-    this.composer.render();
+    this.stage.render();
   }
 
   /** The current picture as a JPEG data URL. */
   capture(): string {
-    this.render();
-    return this.canvas.toDataURL("image/jpeg", 0.92);
+    return this.stage.capture();
   }
 
   dispose(): void {
-    this.scene.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      mesh.geometry?.dispose();
-      const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
-      if (Array.isArray(material)) material.forEach((m) => m.dispose());
-      else material?.dispose();
-    });
-    this.composer.dispose();
-    this.renderer.dispose();
+    this.stage.dispose();
   }
 
   /* --------------------------------------------------------------------------- */
@@ -768,30 +675,5 @@ export class ParticleWorld {
       wave.mesh.scale.setScalar(0.3 + eased * 11 * wave.power);
       wave.mesh.material.opacity = (1 - t) * 0.9;
     }
-  }
-
-  private createStarfield(rand: () => number): THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial> {
-    const n = 1600;
-    const pos = new Float32Array(n * 3);
-    const col = new Float32Array(n * 3);
-    const size = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      pos[i * 3] = (rand() - 0.5) * 140;
-      pos[i * 3 + 1] = (rand() - 0.5) * 90;
-      pos[i * 3 + 2] = -30 - rand() * 40;
-      const b = 0.22 + Math.pow(rand(), 3) * 0.6;
-      const blue = rand() < 0.3;
-      col[i * 3] = b * (blue ? 0.7 : 1);
-      col[i * 3 + 1] = b * (blue ? 0.85 : 0.95);
-      col[i * 3 + 2] = b;
-      size[i] = 0.12 + rand() * 0.18;
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geometry.setAttribute("aColor", new THREE.BufferAttribute(col, 3));
-    geometry.setAttribute("aSize", new THREE.BufferAttribute(size, 1));
-    const points = new THREE.Points(geometry, pointMaterial());
-    points.frustumCulled = false;
-    return points;
   }
 }

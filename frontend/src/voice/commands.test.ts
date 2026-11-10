@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { findCommands } from "./commands";
+import { DRAW_VOCABULARY, findCommands, HAND_VOCABULARY } from "./commands";
 
-describe("findCommands", () => {
+describe("findCommands in Hand Magic", () => {
   it.each([
     ["Fire", ["fire"]],
     ["make it galaxy", ["galaxy"]],
@@ -11,7 +11,24 @@ describe("findCommands", () => {
     ["safe", ["save"]],
     ["that is nice", []],
     ["hello", []],
+    ["red", []],
   ])("%s", (text, expected) => {
-    expect(findCommands(text)).toEqual(expected);
+    expect(findCommands(text, HAND_VOCABULARY)).toEqual(expected);
+  });
+});
+
+describe("findCommands in Air Drawing", () => {
+  it.each([
+    ["red", ["red"]],
+    ["now blue", ["blue"]],
+    ["golden", ["gold"]],
+    ["green then rainbow", ["green", "rainbow"]],
+    ["undo", ["undo"]],
+    ["clear everything", ["clear"]],
+    ["save", ["save"]],
+    ["fire", []],
+    ["thank you", []],
+  ])("%s", (text, expected) => {
+    expect(findCommands(text, DRAW_VOCABULARY)).toEqual(expected);
   });
 });

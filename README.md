@@ -14,12 +14,15 @@ There is nothing to install and no account. The camera picture never leaves your
 | --- | --- |
 | ![Rainbow torus knot](docs/rainbow.png) | ![Snowflake made of particles](docs/ice.png) |
 
+![A 3D light sculpture drawn in the air: a rainbow spiral on a blue base](docs/air-drawing.png)
+*Air Drawing: the sculpture turns while you draw, so a hand that only moves up and down draws a 3D spiral.*
+
 ## Worlds
 
 | # | World | Idea | Status |
 | --- | --- | --- | --- |
 | 01 | **Hand Magic** (`/hand`) | Particles follow your hand. Fist, open hand, pinch, two hands. | ✅ Ready |
-| 02 | Air Drawing (`/draw`) | Draw in the air, the lines float as a 3D neon sculpture. | Planned |
+| 02 | **Air Drawing** (`/draw`) | Paint neon light into the air. It turns into a 3D sculpture you can save and turn. | ✅ Ready |
 | 03 | Hologram Mirror (`/mirror`) | The camera turns you into a hologram of particles or letters. | Planned |
 | 04 | Voice World (`/voice`) | Your voice grows a living landscape. | Planned |
 
@@ -36,6 +39,22 @@ There is nothing to install and no account. The camera picture never leaves your
 **Voice commands** (English): `fire`, `ice`, `galaxy`, `rainbow`, `save`, `next world`.
 **Keyboard:** `1`–`4` elements, `S` save a picture, `C` camera picture, `N` next world.
 **No camera?** Play with the mouse: hold the left button for a black hole, let go to explode, right button to throw a star, wheel to zoom.
+
+### Air Drawing: what you can do
+
+| Gesture | What happens |
+| --- | --- |
+| 🤏 Pinch thumb and index finger, move | You draw a glowing line. Sparks fly from the pen, a theremin tone follows your hand height |
+| ✊ Fist and move | You grab the sculpture and turn it. Let go and it keeps spinning |
+| 🙌 Two open hands | Zoom |
+
+The sculpture stands on a slowly turning platform, like clay on a potter's wheel. You draw on a flat plane, but the
+sculpture turns under the pen, so every line becomes a real 3D curve.
+
+**Voice commands:** `red`, `blue`, `green`, `gold`, `rainbow`, `undo`, `clear`, `save`, `next world`.
+**Keyboard:** `1`–`5` colors, `Z` undo, `X` clear, `S` save, `C` camera picture.
+**Mouse:** left button draws, right button turns, wheel zooms.
+**Save** stores the picture *and* the 3D data. In the gallery, drawings marked **3D** open as a sculpture you can turn with the mouse.
 
 ## How it works
 
@@ -55,11 +74,16 @@ webcam ──► MediaPipe Hand Landmarker (WebAssembly + GPU, in the browser)
                         ◄── sound.ts (Web Audio) makes every sound live, no audio files
 
 saved picture ──► FastAPI /api/gallery ──► file on disk + row in SQLite
+3D drawing ─────► validated by Pydantic (colors, number of points) ──► JSON in SQLite
+                  ──► GET /api/gallery/{id}/sculpture ──► 3D viewer with orbit controls
 ```
 
+Both worlds share one engine: `stage.ts` (renderer, star sky, bloom), `handInput.ts` (camera hands and a mouse
+"hand" with the same interface), voice control with a word list per world, and the sound engine.
+
 - **Frontend:** React 19, TypeScript, Vite, Three.js, MediaPipe Tasks Vision, Web Speech API, Web Audio API
-- **Backend:** FastAPI, SQLite, served by Uvicorn. After a build it also serves the website, so everything runs on one port.
-- **Tests:** Vitest for the gesture rules and voice matching, pytest for the gallery API.
+- **Backend:** FastAPI, Pydantic, SQLite, served by Uvicorn. After a build it also serves the website, so everything runs on one port.
+- **Tests:** Vitest for gesture rules, voice matching and the sculpture model; pytest for the gallery API (pictures, sculptures, database upgrade).
 
 ### Privacy
 
@@ -102,15 +126,17 @@ cd backend && .venv/Scripts/python -m pytest
 
 ```
 backend/
-  app/main.py        FastAPI app: gallery API, saved images, built website
-  app/gallery.py     image validation, files on disk, SQLite
+  app/main.py        FastAPI app: gallery API, sculpture validation, saved images, built website
+  app/gallery.py     image validation, files on disk, SQLite (with automatic upgrade of old databases)
   tests/             pytest
 frontend/
-  src/engine/        particle world (Three.js) and the four element shapes
-  src/vision/        camera + MediaPipe, gesture rules (unit tested)
+  src/engine/        shared 3D stage, particle world, element shapes, light sculptures, sparks
+  src/vision/        camera + MediaPipe, gesture rules (unit tested), camera and mouse input
   src/voice/         speech recognition and command matching (unit tested)
-  src/audio/         sounds made with Web Audio
+  src/audio/         sounds made with Web Audio, including the theremin
   src/worlds/hand/   Hand Magic: rules and the frame loop
+  src/worlds/draw/   Air Drawing: turning scene, rules and the frame loop
+  src/components/    shared interface parts and the 3D sculpture viewer
   src/pages/         start page, worlds, gallery
 start.cmd            install, build and run on Windows
 ```

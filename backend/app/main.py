@@ -2,28 +2,62 @@
 
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .gallery import Gallery, GalleryItem, InvalidImage
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_SITE_DIR = BACKEND_DIR.parent / "frontend" / "dist"
+MAX_SCULPTURE_POINTS = 60_000
 
 World = Literal["hand", "draw", "mirror", "voice"]
+
+
+class Stroke(BaseModel):
+    color: Literal["rainbow", "red", "blue", "green", "gold"]
+    points: list[float] = Field(
+        min_length=6,
+        max_length=MAX_SCULPTURE_POINTS * 3,
+        description="x, y, z, x, y, z, ... in sculpture space",
+    )
+
+    @field_validator("points")
+    @classmethod
+    def check_points(cls, points: list[float]) -> list[float]:
+        if len(points) % 3:
+            raise ValueError("points must come in groups of three (x, y, z)")
+        if not all(math.isfinite(v) and abs(v) < 100 for v in points):
+            raise ValueError("points must be finite numbers between -100 and 100")
+        return points
+
+
+class Sculpture(BaseModel):
+    """A drawing from the Air Drawing world: glowing strokes in 3D."""
+
+    version: Literal[1] = 1
+    strokes: list[Stroke] = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="after")
+    def check_size(self) -> "Sculpture":
+        if sum(len(s.points) for s in self.strokes) > MAX_SCULPTURE_POINTS * 3:
+            raise ValueError(f"a sculpture can have at most {MAX_SCULPTURE_POINTS} points")
+        return self
 
 
 class SaveImage(BaseModel):
     world: World
     image: str = Field(description="Base64 data URL of a PNG, JPEG or WebP image")
+    sculpture: Sculpture | None = None
 
 
 class ImageOut(BaseModel):
@@ -31,10 +65,17 @@ class ImageOut(BaseModel):
     world: str
     created_at: str
     url: str
+    has_sculpture: bool
 
 
 def _out(item: GalleryItem) -> ImageOut:
-    return ImageOut(id=item.id, world=item.world, created_at=item.created_at, url=f"/images/{item.filename}")
+    return ImageOut(
+        id=item.id,
+        world=item.world,
+        created_at=item.created_at,
+        url=f"/images/{item.filename}",
+        has_sculpture=item.has_sculpture,
+    )
 
 
 def create_app(data_dir: Path | None = None, site_dir: Path | None = None) -> FastAPI:
@@ -60,11 +101,19 @@ def create_app(data_dir: Path | None = None, site_dir: Path | None = None) -> Fa
 
     @app.post("/api/gallery", response_model=ImageOut, status_code=201)
     def save_image(body: SaveImage) -> ImageOut:
+        sculpture = body.sculpture.model_dump() if body.sculpture else None
         try:
-            item = gallery.add(body.world, body.image)
+            item = gallery.add(body.world, body.image, sculpture)
         except InvalidImage as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         return _out(item)
+
+    @app.get("/api/gallery/{item_id}/sculpture")
+    def get_sculpture(item_id: str) -> dict[str, Any]:
+        sculpture = gallery.sculpture(item_id)
+        if sculpture is None:
+            raise HTTPException(status_code=404, detail="This picture has no 3D sculpture.")
+        return sculpture
 
     @app.delete("/api/gallery/{item_id}", status_code=204)
     def delete_image(item_id: str) -> Response:

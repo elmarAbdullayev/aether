@@ -83,3 +83,77 @@ def test_serves_site_with_spa_fallback(client):
     assert "aether" in api.get("/hand").text
     assert "aether" in api.get("/../../etc/passwd").text
     assert api.get("/api/nothing").status_code == 404
+
+
+SCULPTURE = {
+    "version": 1,
+    "strokes": [
+        {"color": "rainbow", "points": [0, 0, 0, 0.1, 0.2, 0.3, 0.2, 0.4, 0.6]},
+        {"color": "gold", "points": [1, 1, 1, 1.5, 1, 1]},
+    ],
+}
+
+
+def test_save_and_load_sculpture(client):
+    api, _ = client
+    res = api.post(
+        "/api/gallery",
+        json={"world": "draw", "image": f"data:image/png;base64,{PNG}", "sculpture": SCULPTURE},
+    )
+    assert res.status_code == 201
+    item = res.json()
+    assert item["has_sculpture"] is True
+    assert api.get("/api/gallery").json()[0]["has_sculpture"] is True
+
+    loaded = api.get(f"/api/gallery/{item['id']}/sculpture")
+    assert loaded.status_code == 200
+    assert loaded.json() == SCULPTURE
+
+
+def test_picture_without_sculpture(client):
+    api, _ = client
+    item = api.post("/api/gallery", json={"world": "hand", "image": f"data:image/png;base64,{PNG}"}).json()
+    assert item["has_sculpture"] is False
+    assert api.get(f"/api/gallery/{item['id']}/sculpture").status_code == 404
+    assert api.get("/api/gallery/nothing/sculpture").status_code == 404
+
+
+@pytest.mark.parametrize(
+    "sculpture",
+    [
+        {"version": 1, "strokes": []},
+        {"version": 1, "strokes": [{"color": "pink", "points": [0, 0, 0, 1, 1, 1]}]},
+        {"version": 1, "strokes": [{"color": "red", "points": [0, 0, 0, 1, 1]}]},
+        {"version": 1, "strokes": [{"color": "red", "points": [0, 0, 0, 1, 1, 500]}]},
+        {"version": 2, "strokes": [{"color": "red", "points": [0, 0, 0, 1, 1, 1]}]},
+        {"version": 1, "strokes": [{"color": "red", "points": [0.0] * 120_003}] * 2},
+    ],
+)
+def test_rejects_bad_sculptures(client, sculpture):
+    api, _ = client
+    res = api.post(
+        "/api/gallery",
+        json={"world": "draw", "image": f"data:image/png;base64,{PNG}", "sculpture": sculpture},
+    )
+    assert res.status_code == 422
+    assert api.get("/api/gallery").json() == []
+
+
+def test_upgrades_old_database(tmp_path):
+    import sqlite3
+
+    data = tmp_path / "data"
+    data.mkdir()
+    db = sqlite3.connect(data / "gallery.db")
+    db.execute("CREATE TABLE images (id TEXT PRIMARY KEY, world TEXT NOT NULL, created_at TEXT NOT NULL, filename TEXT NOT NULL)")
+    db.execute("INSERT INTO images VALUES ('old', 'hand', '2026-11-01T10:00:00+00:00', 'old.png')")
+    db.commit()
+    db.close()
+
+    api = TestClient(create_app(data_dir=data, site_dir=tmp_path / "nosite"))
+    listed = api.get("/api/gallery").json()
+    assert listed == [
+        {"id": "old", "world": "hand", "created_at": "2026-11-01T10:00:00+00:00", "url": "/images/old.png", "has_sculpture": False}
+    ]
+    res = api.post("/api/gallery", json={"world": "draw", "image": f"data:image/png;base64,{PNG}", "sculpture": SCULPTURE})
+    assert res.status_code == 201

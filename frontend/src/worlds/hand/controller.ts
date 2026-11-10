@@ -1,17 +1,7 @@
 import type { Sound } from "../../audio/sound";
 import type { BlackHole, ParticleWorld, Star } from "../../engine/world";
-import type { Gesture, Point } from "../../vision/gestures";
-
-/** One hand (camera) or the mouse, already in screen coordinates (0..1, y down). */
-export interface HandInput {
-  id: string;
-  gesture: Gesture;
-  palm: Point;
-  tip: Point;
-  pinch: Point;
-  /** All 21 points, only for camera hands. Drawn as a glowing skeleton. */
-  joints?: Point[];
-}
+import type { Gesture } from "../../vision/gestures";
+import type { HandInput } from "../../vision/handInput";
 
 interface Vec {
   x: number;

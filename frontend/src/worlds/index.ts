@@ -30,9 +30,10 @@ export const WORLDS: WorldInfo[] = [
     number: "02",
     name: "Air Drawing",
     tagline: "Paint light into the air.",
-    description: "Draw with your index finger in the air. Your lines float as a neon sculpture you can turn with the other hand.",
-    inputs: ["Camera"],
-    ready: false,
+    description:
+      "Pinch your fingers and paint light into the air. The sculpture turns while you draw, so your lines become real 3D shapes. Save it and turn it in the gallery.",
+    inputs: ["Camera", "Voice"],
+    ready: true,
   },
   {
     id: "mirror",

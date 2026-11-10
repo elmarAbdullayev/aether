@@ -101,6 +101,20 @@ export const Download = (p: Props) => (
   </Icon>
 );
 
+export const Undo = (p: Props) => (
+  <Icon {...p}>
+    <path d="M9 14L4 9l5-5" />
+    <path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+  </Icon>
+);
+
+export const Cube = (p: Props) => (
+  <Icon {...p}>
+    <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" />
+    <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
+  </Icon>
+);
+
 export const Close = (p: Props) => (
   <Icon {...p}>
     <path d="M6 6l12 12M18 6L6 18" />

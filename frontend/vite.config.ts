@@ -8,5 +8,11 @@ export default defineConfig({
     strictPort: true,
     proxy: { "/api": api, "/images": api },
   },
-  build: { chunkSizeWarningLimit: 1500 },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      // big libraries in their own files: they change rarely, so the browser keeps them cached
+      output: { manualChunks: { three: ["three"], mediapipe: ["@mediapipe/tasks-vision"] } },
+    },
+  },
 });

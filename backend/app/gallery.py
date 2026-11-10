@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
 import re
 import sqlite3
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 WORLDS = ("hand", "draw", "mirror", "voice")
@@ -33,6 +37,7 @@ class GalleryItem:
     world: str
     created_at: str
     filename: str
+    has_sculpture: bool = False
 
 
 def decode_data_url(data_url: str) -> tuple[str, bytes]:
@@ -67,16 +72,26 @@ class Gallery:
                     id TEXT PRIMARY KEY,
                     world TEXT NOT NULL,
                     created_at TEXT NOT NULL,
-                    filename TEXT NOT NULL
+                    filename TEXT NOT NULL,
+                    sculpture TEXT
                 )"""
             )
+            # galleries made before world 2 have no sculpture column yet
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(images)")}
+            if "sculpture" not in columns:
+                db.execute("ALTER TABLE images ADD COLUMN sculpture TEXT")
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
         db = sqlite3.connect(self.db_path)
         db.row_factory = sqlite3.Row
-        return db
+        try:
+            with db:  # commits, or rolls back on error
+                yield db
+        finally:
+            db.close()
 
-    def add(self, world: str, data_url: str) -> GalleryItem:
+    def add(self, world: str, data_url: str, sculpture: dict[str, Any] | None = None) -> GalleryItem:
         kind, raw = decode_data_url(data_url)
         item_id = uuid.uuid4().hex
         item = GalleryItem(
@@ -84,21 +99,46 @@ class Gallery:
             world=world,
             created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             filename=f"{item_id}.{_EXTENSIONS[kind]}",
+            has_sculpture=sculpture is not None,
         )
         (self.images_dir / item.filename).write_bytes(raw)
         with self._connect() as db:
             db.execute(
-                "INSERT INTO images (id, world, created_at, filename) VALUES (?, ?, ?, ?)",
-                (item.id, item.world, item.created_at, item.filename),
+                "INSERT INTO images (id, world, created_at, filename, sculpture) VALUES (?, ?, ?, ?, ?)",
+                (
+                    item.id,
+                    item.world,
+                    item.created_at,
+                    item.filename,
+                    json.dumps(sculpture, separators=(",", ":")) if sculpture is not None else None,
+                ),
             )
         return item
 
     def list(self) -> list[GalleryItem]:
         with self._connect() as db:
             rows = db.execute(
-                "SELECT id, world, created_at, filename FROM images ORDER BY created_at DESC, rowid DESC"
+                """SELECT id, world, created_at, filename, sculpture IS NOT NULL AS has_sculpture
+                   FROM images ORDER BY created_at DESC, rowid DESC"""
             ).fetchall()
-        return [GalleryItem(**dict(row)) for row in rows]
+        return [
+            GalleryItem(
+                id=row["id"],
+                world=row["world"],
+                created_at=row["created_at"],
+                filename=row["filename"],
+                has_sculpture=bool(row["has_sculpture"]),
+            )
+            for row in rows
+        ]
+
+    def sculpture(self, item_id: str) -> dict[str, Any] | None:
+        """The 3D drawing saved with a picture, or None."""
+        with self._connect() as db:
+            row = db.execute("SELECT sculpture FROM images WHERE id = ?", (item_id,)).fetchone()
+        if row is None or row["sculpture"] is None:
+            return None
+        return json.loads(row["sculpture"])
 
     def delete(self, item_id: str) -> bool:
         with self._connect() as db:

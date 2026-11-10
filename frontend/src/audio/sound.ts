@@ -11,6 +11,7 @@ export class Sound {
   private noise: AudioBuffer | null = null;
   private hole: { osc: OscillatorNode[]; gain: GainNode; filter: BiquadFilterNode } | null = null;
   private pad: { osc: OscillatorNode[]; gain: GainNode } | null = null;
+  private voice: { osc: OscillatorNode[]; gain: GainNode } | null = null;
   private muted = false;
   private calm = false;
 
@@ -174,6 +175,61 @@ export class Sound {
     }
   }
 
+  /**
+   * Theremin-like tone while drawing: level 0..1 is the hand height (higher hand, higher note).
+   * null stops it.
+   */
+  theremin(level: number | null): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    if (level === null) {
+      if (this.voice) {
+        this.voice.gain.gain.setTargetAtTime(0, now, 0.08);
+        this.voice.osc.forEach((o) => o.stop(now + 0.6));
+        this.voice = null;
+      }
+      return;
+    }
+    if (!this.voice) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 2400;
+      const main = ctx.createOscillator();
+      main.type = "sine";
+      const low = ctx.createOscillator();
+      low.type = "triangle";
+      const lowGain = ctx.createGain();
+      lowGain.gain.value = 0.25;
+      // vibrato: a slow wobble of the pitch, like a real theremin
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5.5;
+      const depth = ctx.createGain();
+      depth.gain.value = 5;
+      lfo.connect(depth);
+      depth.connect(main.frequency);
+      main.connect(filter);
+      low.connect(lowGain).connect(filter);
+      filter.connect(gain);
+      this.out(gain, 0.7);
+      [main, low, lfo].forEach((o) => o.start(now));
+      gain.gain.setTargetAtTime(0.1, now, 0.05);
+      this.voice = { osc: [main, low, lfo], gain };
+    }
+    const freq = 150 * Math.pow(2, Math.min(1, Math.max(0, level)) * 2.5);
+    this.voice.osc[0].frequency.setTargetAtTime(freq, now, 0.04);
+    this.voice.osc[1].frequency.setTargetAtTime(freq / 2, now, 0.04);
+  }
+
+  /** Short rising notes when the brush color changes. */
+  colorChime(index: number): void {
+    const scale = [523.3, 587.3, 659.3, 784, 880, 1046.5];
+    const base = index % 3;
+    this.bell([scale[base], scale[base + 2], scale[base + 3]], 0.12, 0.9, 0.05);
+  }
+
   /** Camera shutter for "save". */
   shutter(): void {
     const ctx = this.ctx;
@@ -193,6 +249,7 @@ export class Sound {
   }
 
   dispose(): void {
+    this.theremin(null);
     void this.ctx?.close();
     this.ctx = null;
   }

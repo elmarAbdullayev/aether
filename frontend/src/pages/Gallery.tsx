@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteImage, listImages, type GalleryImage } from "../api/gallery";
-import { Close, Download, Trash } from "../components/icons";
+import { Close, Cube, Download, Trash } from "../components/icons";
+import { SculptureViewer } from "../components/SculptureViewer";
 import { useToast } from "../components/Toast";
 import { TopBar } from "../components/TopBar";
 import { WORLDS } from "../worlds";
@@ -20,6 +21,8 @@ export default function Gallery() {
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [open, setOpen] = useState<GalleryImage | null>(null);
+  const [view3d, setView3d] = useState<GalleryImage | null>(null);
+  const closeViewer = useCallback(() => setView3d(null), []);
   const [toast, showToast] = useToast();
 
   useEffect(() => {
@@ -52,7 +55,10 @@ export default function Gallery() {
       <TopBar />
       <main className="section gallery">
         <h1>Gallery</h1>
-        <p className="lead">Pictures you saved from the worlds. Say “save” or press S while you play.</p>
+        <p className="lead">
+          Pictures you saved from the worlds. Say “save” or press S while you play. Drawings marked 3D open as a
+          sculpture you can turn.
+        </p>
 
         {failed && (
           <div className="empty">
@@ -76,6 +82,7 @@ export default function Gallery() {
               <li key={img.id} className="gallery-item">
                 <button type="button" className="gallery-thumb" onClick={() => setOpen(img)}>
                   <img src={img.url} alt={`Saved from ${worldName(img.world)}`} loading="lazy" />
+                  {img.has_sculpture && <span className="thumb-badge">3D</span>}
                 </button>
                 <div className="gallery-meta">
                   <div>
@@ -94,6 +101,12 @@ export default function Gallery() {
                     </div>
                   ) : (
                     <div className="gallery-actions">
+                      {img.has_sculpture && (
+                        <button type="button" className="icon-btn" onClick={() => setView3d(img)} title="Open in 3D">
+                          <Cube />
+                          <span className="sr-only">Open in 3D</span>
+                        </button>
+                      )}
                       <a className="icon-btn" href={img.url} download={`aether-${img.world}-${img.id.slice(0, 6)}`} title="Download">
                         <Download />
                         <span className="sr-only">Download</span>
@@ -120,6 +133,7 @@ export default function Gallery() {
           </button>
         </div>
       )}
+      {view3d && <SculptureViewer image={view3d} onClose={closeViewer} />}
       {toast}
     </div>
   );
